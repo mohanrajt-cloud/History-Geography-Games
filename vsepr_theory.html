@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VSEPR Theory – Interactive 3D Molecular Shapes</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600&display=swap');
+
+  :root {
+    --bg: #030b1a;
+    --panel: #071428;
+    --panel2: #0a1f3a;
+    --accent: #00d4ff;
+    --accent2: #ff6b35;
+    --accent3: #7fff00;
+    --atom-central: #ff4444;
+    --atom-outer: #4488ff;
+    --lone-pair: #ffcc00;
+    --bond: #aaddff;
+    --text: #c8e8ff;
+    --glow: 0 0 20px rgba(0,212,255,0.5);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Exo 2', sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  /* ===== INTRO SLIDE ===== */
+  #intro {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: radial-gradient(ellipse at center, #0a1f3a 0%, #030b1a 70%);
+    z-index: 100;
+    transition: opacity 0.8s ease;
+  }
+  #intro h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(2rem, 6vw, 5rem);
+    font-weight: 900;
+    background: linear-gradient(135deg, #00d4ff, #7fff00, #ff6b35);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-align: center;
+    letter-spacing: 4px;
+    animation: pulseTitle 3s ease-in-out infinite;
+  }
+  @keyframes pulseTitle {
+    0%,100% { filter: brightness(1); }
+    50% { filter: brightness(1.3) drop-shadow(0 0 20px #00d4ff); }
+  }
+  #intro p {
+    font-size: clamp(1rem, 2vw, 1.4rem);
+    color: #7ab8d4;
+    margin-top: 1rem;
+    letter-spacing: 2px;
+    text-align: center;
+  }
+  #intro .subtitle {
+    font-size: clamp(0.8rem, 1.5vw, 1.1rem);
+    color: #4a8fa8;
+    margin-top: 0.5rem;
+    letter-spacing: 1px;
+  }
+  .start-btn {
+    margin-top: 3rem;
+    padding: 1rem 3rem;
+    background: transparent;
+    border: 2px solid var(--accent);
+    color: var(--accent);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.1rem;
+    letter-spacing: 3px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+  .start-btn::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: var(--accent);
+    transform: translateX(-100%);
+    transition: transform 0.3s;
+    z-index: -1;
+  }
+  .start-btn:hover::before { transform: translateX(0); }
+  .start-btn:hover { color: var(--bg); }
+
+  /* ===== ORBIT ANIMATION ON INTRO ===== */
+  .orbit-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid rgba(0,212,255,0.2);
+    animation: spin linear infinite;
+  }
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+  /* ===== LEGEND BADGE ===== */
+  .legend {
+    position: fixed;
+    top: 80px; right: 20px;
+    background: rgba(7,20,40,0.9);
+    border: 1px solid rgba(0,212,255,0.3);
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 0.78rem;
+    z-index: 50;
+    backdrop-filter: blur(10px);
+    display: none;
+  }
+  .legend.visible { display: block; }
+  .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .legend-dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ===== MAIN LAYOUT ===== */
+  #app {
+    display: none;
+    height: 100vh;
+    width: 100vw;
+    flex-direction: column;
+  }
+  #app.visible { display: flex; }
+
+  /* ===== HEADER ===== */
+  header {
+    background: rgba(7,20,40,0.95);
+    border-bottom: 1px solid rgba(0,212,255,0.3);
+    padding: 0.6rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    backdrop-filter: blur(10px);
+  }
+  header h2 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1rem;
+    color: var(--accent);
+    letter-spacing: 3px;
+  }
+  .slide-counter {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.8rem;
+    color: #4a8fa8;
+  }
+
+  /* ===== CONTENT AREA ===== */
+  #content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ===== LEFT NAV ===== */
+  #nav {
+    width: 200px;
+    background: rgba(10,31,58,0.8);
+    border-right: 1px solid rgba(0,212,255,0.15);
+    overflow-y: auto;
+    flex-shrink: 0;
+    padding: 8px 0;
+  }
+  #nav::-webkit-scrollbar { width: 4px; }
+  #nav::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.3); border-radius: 2px; }
+  .nav-item {
+    padding: 10px 14px;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+    transition: all 0.2s;
+    font-size: 0.78rem;
+    color: #5a8fa8;
+    line-height: 1.3;
+  }
+  .nav-item:hover { background: rgba(0,212,255,0.08); color: var(--accent); }
+  .nav-item.active { border-left-color: var(--accent); background: rgba(0,212,255,0.12); color: var(--accent); }
+  .nav-item .nav-formula { font-size: 0.68rem; color: #3a6f8a; }
+  .nav-section {
+    font-size: 0.65rem;
+    color: #2a4f6a;
+    letter-spacing: 2px;
+    padding: 10px 14px 4px;
+    text-transform: uppercase;
+  }
+
+  /* ===== SLIDE AREA ===== */
+  #slide-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ===== CANVAS AREA ===== */
+  #canvas-wrapper {
+    position: relative;
+    height: 320px;
+    flex-shrink: 0;
+    background: radial-gradient(ellipse at center, #071428 0%, #030b1a 100%);
+    border-bottom: 1px solid rgba(0,212,255,0.15);
+  }
+  #three-canvas {
+    width: 100%;
+    height: 100%;
+  }
+  .canvas-label {
+    position: absolute;
+    top: 12px; left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(1.2rem, 3vw, 2rem);
+    font-weight: 700;
+    color: var(--accent);
+    text-shadow: var(--glow);
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .canvas-formula {
+    position: absolute;
+    top: 50px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 1rem;
+    color: #4a9ab8;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .rotate-hint {
+    position: absolute;
+    bottom: 10px; right: 14px;
+    font-size: 0.7rem;
+    color: rgba(0,212,255,0.4);
+    pointer-events: none;
+  }
+
+  /* ===== INFO PANEL ===== */
+  #info-panel {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.2rem 1.8rem;
+    background: linear-gradient(180deg, rgba(7,20,40,0.6) 0%, rgba(3,11,26,0.8) 100%);
+  }
+  #info-panel::-webkit-scrollbar { width: 4px; }
+  #info-panel::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.3); border-radius: 2px; }
+
+  .info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.2rem;
+  }
+
+  .info-card {
+    background: rgba(0,212,255,0.05);
+    border: 1px solid rgba(0,212,255,0.2);
+    border-radius: 10px;
+    padding: 1rem;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s;
+  }
+  .info-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px; height: 100%;
+    background: var(--accent);
+  }
+  .info-card:hover { border-color: rgba(0,212,255,0.5); }
+  .info-card h3 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.65rem;
+    color: #4a8fa8;
+    letter-spacing: 2px;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+  }
+  .info-card p {
+    font-size: 0.95rem;
+    color: var(--text);
+    font-weight: 600;
+  }
+  .info-card .sub { font-size: 0.8rem; color: #5a8fa8; font-weight: 400; margin-top: 2px; }
+
+  .angle-badge {
+    display: inline-block;
+    background: rgba(127,255,0,0.1);
+    border: 1px solid rgba(127,255,0,0.4);
+    color: var(--accent3);
+    border-radius: 20px;
+    padding: 2px 10px;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  .description-box {
+    background: rgba(0,212,255,0.04);
+    border: 1px solid rgba(0,212,255,0.15);
+    border-radius: 10px;
+    padding: 1rem 1.2rem;
+    font-size: 0.88rem;
+    line-height: 1.7;
+    color: #9ab8cc;
+    margin-bottom: 1rem;
+  }
+
+  .examples-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-bottom: 1rem;
+  }
+  .example-tag {
+    background: rgba(255,107,53,0.12);
+    border: 1px solid rgba(255,107,53,0.4);
+    color: var(--accent2);
+    border-radius: 6px;
+    padding: 4px 12px;
+    font-size: 0.82rem;
+    font-family: 'Orbitron', sans-serif;
+  }
+
+  .rule-box {
+    background: rgba(127,255,0,0.04);
+    border-left: 3px solid var(--accent3);
+    border-radius: 0 8px 8px 0;
+    padding: 0.8rem 1rem;
+    font-size: 0.82rem;
+    color: #8ab890;
+    line-height: 1.6;
+  }
+
+  /* ===== BOTTOM NAV ===== */
+  .nav-buttons {
+    display: flex;
+    gap: 1rem;
+    padding: 0.8rem 1.5rem;
+    background: rgba(7,20,40,0.95);
+    border-top: 1px solid rgba(0,212,255,0.15);
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .nav-btn {
+    padding: 0.5rem 1.5rem;
+    background: transparent;
+    border: 1px solid rgba(0,212,255,0.4);
+    color: var(--accent);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.75rem;
+    letter-spacing: 2px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+  }
+  .nav-btn:hover { background: rgba(0,212,255,0.15); }
+  .nav-btn:disabled { opacity: 0.3; cursor: default; }
+  .progress-bar {
+    flex: 1;
+    height: 3px;
+    background: rgba(0,212,255,0.1);
+    border-radius: 2px;
+    overflow: hidden;
+    margin: 0 1rem;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent3));
+    border-radius: 2px;
+    transition: width 0.4s ease;
+  }
+
+  /* ===== THEORY SLIDE ===== */
+  .theory-slide {
+    padding: 1.5rem 2rem;
+    overflow-y: auto;
+    flex: 1;
+  }
+  .theory-slide h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(1.5rem, 3vw, 2.5rem);
+    color: var(--accent);
+    margin-bottom: 1.5rem;
+  }
+  .theory-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.2rem;
+    margin-bottom: 1.5rem;
+  }
+  .theory-card {
+    background: rgba(0,212,255,0.05);
+    border: 1px solid rgba(0,212,255,0.2);
+    border-radius: 12px;
+    padding: 1.2rem;
+  }
+  .theory-card .icon { font-size: 2rem; margin-bottom: 0.7rem; }
+  .theory-card h3 { font-family: 'Orbitron', sans-serif; font-size: 0.85rem; color: var(--accent); margin-bottom: 0.5rem; }
+  .theory-card p { font-size: 0.85rem; color: #7a9bac; line-height: 1.6; }
+
+  .vsepr-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+    margin-top: 1rem;
+  }
+  .vsepr-table th {
+    background: rgba(0,212,255,0.15);
+    color: var(--accent);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.65rem;
+    letter-spacing: 1px;
+    padding: 8px 10px;
+    text-align: left;
+  }
+  .vsepr-table td { padding: 7px 10px; border-bottom: 1px solid rgba(0,212,255,0.08); color: #8ab8cc; }
+  .vsepr-table tr:hover td { background: rgba(0,212,255,0.05); }
+
+  /* ===== PARTICLE BG ===== */
+  #particle-bg {
+    position: fixed; inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+  }
+  .particle {
+    position: absolute;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,212,255,0.6), transparent);
+    animation: floatParticle linear infinite;
+  }
+  @keyframes floatParticle {
+    0% { transform: translateY(100vh) scale(0); opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 0.5; }
+    100% { transform: translateY(-10vh) scale(1); opacity: 0; }
+  }
+
+  /* ===== COMPLETION SLIDE ===== */
+  #completion {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 2rem;
+    text-align: center;
+  }
+  #completion.visible { display: flex; }
+  #completion h2 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(1.5rem, 4vw, 3rem);
+    color: var(--accent3);
+    margin-bottom: 1rem;
+  }
+
+  .shapes-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 0.8rem;
+    margin-top: 1.5rem;
+    width: 100%;
+    max-width: 700px;
+  }
+  .shape-chip {
+    background: rgba(0,212,255,0.08);
+    border: 1px solid rgba(0,212,255,0.25);
+    border-radius: 8px;
+    padding: 0.6rem;
+    font-size: 0.75rem;
+    color: var(--accent);
+    font-family: 'Orbitron', sans-serif;
+    text-align: center;
+  }
+
+  .notation-box {
+    background: rgba(0,212,255,0.06);
+    border: 1px solid rgba(0,212,255,0.2);
+    border-radius: 10px;
+    padding: 0.8rem 1.2rem;
+    font-size: 0.82rem;
+    color: var(--accent);
+    font-family: 'Orbitron', sans-serif;
+    letter-spacing: 1px;
+    text-align: center;
+    margin-bottom: 1rem;
+  }
+</style>
+</head>
+<body>
+
+<div id="particle-bg"></div>
+
+<!-- INTRO -->
+<div id="intro">
+  <div class="orbit-ring" style="width:300px;height:300px;top:50%;left:50%;margin:-150px;animation-duration:8s;"></div>
+  <div class="orbit-ring" style="width:500px;height:500px;top:50%;left:50%;margin:-250px;animation-duration:14s;animation-direction:reverse;"></div>
+  <div class="orbit-ring" style="width:700px;height:700px;top:50%;left:50%;margin:-350px;animation-duration:20s;"></div>
+  <h1>VSEPR THEORY</h1>
+  <p>Valence Shell Electron Pair Repulsion</p>
+  <p class="subtitle">Interactive 3D Molecular Shapes</p>
+  <button class="start-btn" onclick="startApp()">LAUNCH →</button>
+</div>
+
+<!-- LEGEND -->
+<div class="legend" id="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#ff4444;"></div> Central Atom</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#4488ff;"></div> Bonded Atom</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#ffcc00;"></div> Lone Pair</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#aaddff;opacity:0.6;"></div> Bond</div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <header>
+    <h2>⚛ VSEPR THEORY</h2>
+    <div class="slide-counter" id="slide-counter">Slide 1 / 13</div>
+  </header>
+
+  <div id="content">
+    <!-- LEFT NAV -->
+    <div id="nav">
+      <div class="nav-section">Introduction</div>
+      <div class="nav-item active" onclick="goTo(0)">
+        Overview
+        <div class="nav-formula">VSEPR Theory</div>
+      </div>
+      <div class="nav-section">2 Electron Domains</div>
+      <div class="nav-item" onclick="goTo(1)">
+        Linear
+        <div class="nav-formula">AX₂ — BeCl₂, CO₂</div>
+      </div>
+      <div class="nav-section">3 Electron Domains</div>
+      <div class="nav-item" onclick="goTo(2)">
+        Trigonal Planar
+        <div class="nav-formula">AX₃ — BF₃, SO₃</div>
+      </div>
+      <div class="nav-item" onclick="goTo(3)">
+        Bent (3ED)
+        <div class="nav-formula">AX₂E — SO₂</div>
+      </div>
+      <div class="nav-section">4 Electron Domains</div>
+      <div class="nav-item" onclick="goTo(4)">
+        Tetrahedral
+        <div class="nav-formula">AX₄ — CH₄, CCl₄</div>
+      </div>
+      <div class="nav-item" onclick="goTo(5)">
+        Trigonal Pyramidal
+        <div class="nav-formula">AX₃E — NH₃</div>
+      </div>
+      <div class="nav-item" onclick="goTo(6)">
+        Bent (4ED)
+        <div class="nav-formula">AX₂E₂ — H₂O</div>
+      </div>
+      <div class="nav-section">5 Electron Domains</div>
+      <div class="nav-item" onclick="goTo(7)">
+        Trigonal Bipyramidal
+        <div class="nav-formula">AX₅ — PCl₅</div>
+      </div>
+      <div class="nav-item" onclick="goTo(8)">
+        Seesaw
+        <div class="nav-formula">AX₄E — SF₄</div>
+      </div>
+      <div class="nav-item" onclick="goTo(9)">
+        T-Shaped
+        <div class="nav-formula">AX₃E₂ — ClF₃</div>
+      </div>
+      <div class="nav-item" onclick="goTo(10)">
+        Linear (5ED)
+        <div class="nav-formula">AX₂E₃ — XeF₂</div>
+      </div>
+      <div class="nav-section">6 Electron Domains</div>
+      <div class="nav-item" onclick="goTo(11)">
+        Octahedral
+        <div class="nav-formula">AX₆ — SF₆</div>
+      </div>
+      <div class="nav-item" onclick="goTo(12)">
+        Square Pyramidal
+        <div class="nav-formula">AX₅E — BrF₅</div>
+      </div>
+      <div class="nav-item" onclick="goTo(13)">
+        Square Planar
+        <div class="nav-formula">AX₄E₂ — XeF₄</div>
+      </div>
+      <div class="nav-item" onclick="goTo(14)">
+        Summary
+        <div class="nav-formula">All Shapes</div>
+      </div>
+    </div>
+
+    <!-- SLIDE CONTENT -->
+    <div id="slide-area">
+      <!-- 3D Canvas (hidden on theory slide) -->
+      <div id="canvas-wrapper">
+        <canvas id="three-canvas"></canvas>
+        <div class="canvas-label" id="canvas-label">VSEPR Theory</div>
+        <div class="canvas-formula" id="canvas-formula"></div>
+        <div class="rotate-hint">🖱 Drag to rotate</div>
+      </div>
+
+      <!-- Info panel -->
+      <div id="info-panel"></div>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <div class="nav-buttons">
+    <button class="nav-btn" id="btn-prev" onclick="prevSlide()">◀ PREV</button>
+    <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+    <button class="nav-btn" id="btn-next" onclick="nextSlide()">NEXT ▶</button>
+  </div>
+</div>
+
+<script>
+// ===================================================
+// VSEPR DATA
+// ===================================================
+const slides = [
+  { type: 'theory' },
+  {
+    name: 'Linear',
+    formula: 'AX₂  |  2 Bonded, 0 Lone Pairs',
+    examples: ['BeCl₂', 'CO₂', 'HCN', 'CS₂', 'BeF₂'],
+    bonded: 2, lone: 0, totalED: 2,
+    angle: '180°',
+    notation: 'AX₂',
+    description: 'Two bonded atoms placed symmetrically on opposite sides of the central atom. Zero lone pairs means no distortion — the molecule is perfectly straight. The repulsion between the two bond pairs is minimized at 180°.',
+    rule: 'With 2 electron domains and no lone pairs, all atoms arrange in a straight line. Bond angle = exactly 180°.',
+    shape: 'linear',
+    color: '#00d4ff'
+  },
+  {
+    name: 'Trigonal Planar',
+    formula: 'AX₃  |  3 Bonded, 0 Lone Pairs',
+    examples: ['BF₃', 'SO₃', 'AlCl₃', 'BCl₃', 'NO₃⁻'],
+    bonded: 3, lone: 0, totalED: 3,
+    angle: '120°',
+    notation: 'AX₃',
+    description: 'Three bonded atoms arranged in a flat triangular pattern around the central atom. All bond pairs repel equally, resulting in a perfect equilateral triangle. The molecule lies flat in a single plane.',
+    rule: 'Three electron domains with no lone pairs → flat triangle. All bond angles = 120°.',
+    shape: 'trigplanar',
+    color: '#7fff00'
+  },
+  {
+    name: 'Bent (3 Electron Domains)',
+    formula: 'AX₂E  |  2 Bonded, 1 Lone Pair',
+    examples: ['SO₂', 'O₃', 'GeF₂', 'PbCl₂'],
+    bonded: 2, lone: 1, totalED: 3,
+    angle: '~119°',
+    notation: 'AX₂E',
+    description: 'Based on trigonal planar geometry but one position is occupied by a lone pair. The lone pair repels bond pairs more strongly than bond-bond repulsion, compressing the bond angle slightly below 120°.',
+    rule: 'Lone pairs repel more than bonding pairs! One lone pair pushes bonds closer together, reducing angle from 120° to ~119°.',
+    shape: 'bent3',
+    color: '#ff9900'
+  },
+  {
+    name: 'Tetrahedral',
+    formula: 'AX₄  |  4 Bonded, 0 Lone Pairs',
+    examples: ['CH₄', 'CCl₄', 'SiH₄', 'BF₄⁻', 'NH₄⁺'],
+    bonded: 4, lone: 0, totalED: 4,
+    angle: '109.5°',
+    notation: 'AX₄',
+    description: 'Four bonded atoms arranged at the four corners of a tetrahedron — a 3D pyramid with a triangular base. This is the most common shape in organic chemistry. All four bond pairs repel equally.',
+    rule: 'Four electron domains, no lone pairs → regular tetrahedron. Bond angle = 109.5° (the magic tetrahedral angle).',
+    shape: 'tetrahedral',
+    color: '#ff4444'
+  },
+  {
+    name: 'Trigonal Pyramidal',
+    formula: 'AX₃E  |  3 Bonded, 1 Lone Pair',
+    examples: ['NH₃', 'PH₃', 'PCl₃', 'AsH₃', 'NF₃'],
+    bonded: 3, lone: 1, totalED: 4,
+    angle: '~107°',
+    notation: 'AX₃E',
+    description: 'Like a tetrahedron, but one corner has a lone pair instead of a bonded atom. The lone pair\'s stronger repulsion pushes the three bonded atoms downward, creating a pyramid shape. Think of NH₃ (ammonia).',
+    rule: 'One lone pair compresses bond angles from 109.5° → ~107°. Lone pair is "invisible" in the shape name, but very real!',
+    shape: 'trigpyramidal',
+    color: '#ff6b35'
+  },
+  {
+    name: 'Bent (4 Electron Domains)',
+    formula: 'AX₂E₂  |  2 Bonded, 2 Lone Pairs',
+    examples: ['H₂O', 'H₂S', 'SCl₂', 'OF₂'],
+    bonded: 2, lone: 2, totalED: 4,
+    angle: '~104.5°',
+    notation: 'AX₂E₂',
+    description: 'Based on tetrahedral geometry with two lone pairs. The two lone pairs exert even stronger repulsion, pushing the two bonded atoms closer together. Water (H₂O) has this shape — responsible for water\'s unique properties!',
+    rule: 'Two lone pairs compress the bond angle dramatically: 109.5° → ~104.5°. LP-LP repulsion > LP-BP repulsion > BP-BP repulsion.',
+    shape: 'bent4',
+    color: '#4488ff'
+  },
+  {
+    name: 'Trigonal Bipyramidal',
+    formula: 'AX₅  |  5 Bonded, 0 Lone Pairs',
+    examples: ['PCl₅', 'PF₅', 'AsF₅', 'SbCl₅'],
+    bonded: 5, lone: 0, totalED: 5,
+    angle: '90° & 120°',
+    notation: 'AX₅',
+    description: 'Five bonded atoms arranged in two sets: three equatorial (120° apart, in a plane) and two axial (90° to the equatorial plane, one up and one down). Two different bond angles exist in the same molecule!',
+    rule: 'Equatorial positions: 120° apart. Axial-equatorial: 90°. Axial-axial: 180°. First shape with TWO different bond angles.',
+    shape: 'trigbipyramidal',
+    color: '#aa44ff'
+  },
+  {
+    name: 'Seesaw',
+    formula: 'AX₄E  |  4 Bonded, 1 Lone Pair',
+    examples: ['SF₄', 'XeO₂F₂', 'IF₄⁺'],
+    bonded: 4, lone: 1, totalED: 5,
+    angle: '~173° / ~101°',
+    notation: 'AX₄E',
+    description: 'Based on trigonal bipyramidal with one equatorial lone pair. The lone pair in the equatorial position creates a seesaw-like shape — two atoms axial (up/down) and two equatorial. Lone pairs always prefer equatorial positions!',
+    rule: 'Lone pairs prefer equatorial positions (less 90° repulsions). Seesaw = bipyramidal minus one equatorial bond = rocking chair shape.',
+    shape: 'seesaw',
+    color: '#ff44aa'
+  },
+  {
+    name: 'T-Shaped',
+    formula: 'AX₃E₂  |  3 Bonded, 2 Lone Pairs',
+    examples: ['ClF₃', 'BrF₃', 'ICl₃'],
+    bonded: 3, lone: 2, totalED: 5,
+    angle: '~87.5°',
+    notation: 'AX₃E₂',
+    description: 'Derived from trigonal bipyramidal with two equatorial lone pairs. Three bonded atoms remain: two axial and one equatorial, forming a T-shape. The two lone pairs squeeze the bonds slightly below 90°.',
+    rule: 'Two equatorial lone pairs push axial bonds slightly inward: bond angle < 90°. Shape literally looks like the letter T.',
+    shape: 'tshaped',
+    color: '#44ffaa'
+  },
+  {
+    name: 'Linear (5 Electron Domains)',
+    formula: 'AX₂E₃  |  2 Bonded, 3 Lone Pairs',
+    examples: ['XeF₂', 'I₃⁻', 'IF₂⁻'],
+    bonded: 2, lone: 3, totalED: 5,
+    angle: '180°',
+    notation: 'AX₂E₂',
+    description: 'Three equatorial lone pairs + two axial bonds = linear geometry! The three lone pairs occupy all equatorial positions, and the two bonds are left in the axial positions directly opposite each other.',
+    rule: 'Despite 5 electron domains, with 3 lone pairs the shape is linear (180°). Lone pairs are invisible in geometry naming!',
+    shape: 'linear5',
+    color: '#ffdd44'
+  },
+  {
+    name: 'Octahedral',
+    formula: 'AX₆  |  6 Bonded, 0 Lone Pairs',
+    examples: ['SF₆', 'PCl₆⁻', 'SeF₆', 'TeF₆', 'MoF₆'],
+    bonded: 6, lone: 0, totalED: 6,
+    angle: '90°',
+    notation: 'AX₆',
+    description: 'Six bonded atoms arranged at the six corners of an octahedron — like two square pyramids base-to-base. All bond angles are 90°. A perfectly symmetrical, highly stable arrangement.',
+    rule: 'Six electron domains, no lone pairs → perfect octahedron. All bond angles exactly 90°. Highly symmetric!',
+    shape: 'octahedral',
+    color: '#44aaff'
+  },
+  {
+    name: 'Square Pyramidal',
+    formula: 'AX₅E  |  5 Bonded, 1 Lone Pair',
+    examples: ['BrF₅', 'XeOF₄', 'SbF₅²⁻', 'IF₅'],
+    bonded: 5, lone: 1, totalED: 6,
+    angle: '~84.8°',
+    notation: 'AX₅E',
+    description: 'One lone pair in an octahedral arrangement. The lone pair occupies one axial position, leaving five bonded atoms: four equatorial + one axial = square pyramid. The lone pair pushes the four equatorial atoms down slightly.',
+    rule: 'One lone pair (axial) pushes equatorial bonds slightly below 90°. Shape: 4 atoms form a square base, 1 atom on top.',
+    shape: 'sqpyramidal',
+    color: '#ff8844'
+  },
+  {
+    name: 'Square Planar',
+    formula: 'AX₄E₂  |  4 Bonded, 2 Lone Pairs',
+    examples: ['XeF₄', 'ICl₄⁻', 'PtCl₄²⁻', 'AuCl₄⁻'],
+    bonded: 4, lone: 2, totalED: 6,
+    angle: '90°',
+    notation: 'AX₄E₂',
+    description: 'Two lone pairs in opposite axial positions of an octahedron. Four bonded atoms remain in the equatorial plane, forming a perfect square. The two lone pairs cancel each other\'s influence, giving exact 90° angles.',
+    rule: 'Two lone pairs (both axial, opposite sides) cancel out. Four bonds in a perfect square plane. Bond angles = exactly 90°.',
+    shape: 'sqplanar',
+    color: '#88ff44'
+  },
+  { type: 'summary' }
+];
+
+let currentSlide = 0;
+let scene, camera, renderer, animFrameId;
+let isDragging = false, prevMouse = {x:0, y:0};
+let moleculeGroup;
+
+// ===================================================
+// PARTICLES
+// ===================================================
+function createParticles() {
+  const bg = document.getElementById('particle-bg');
+  for (let i = 0; i < 25; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const size = Math.random() * 4 + 1;
+    p.style.cssText = `width:${size}px;height:${size}px;left:${Math.random()*100}%;animation-duration:${Math.random()*15+10}s;animation-delay:${Math.random()*15}s;`;
+    bg.appendChild(p);
+  }
+}
+
+// ===================================================
+// START APP
+// ===================================================
+function startApp() {
+  document.getElementById('intro').style.opacity = '0';
+  setTimeout(() => {
+    document.getElementById('intro').style.display = 'none';
+    document.getElementById('app').classList.add('visible');
+    document.getElementById('legend').classList.add('visible');
+    initThreeJS();
+    renderSlide(0);
+  }, 800);
+}
+
+// ===================================================
+// THREE.JS SETUP
+// ===================================================
+function initThreeJS() {
+  const canvas = document.getElementById('three-canvas');
+  const wrapper = document.getElementById('canvas-wrapper');
+
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(50, wrapper.clientWidth / wrapper.clientHeight, 0.1, 100);
+  camera.position.set(0, 0, 8);
+
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(wrapper.clientWidth, wrapper.clientHeight);
+  renderer.shadowMap.enabled = true;
+
+  // Lights
+  const ambient = new THREE.AmbientLight(0x334466, 1.5);
+  scene.add(ambient);
+  const dirLight = new THREE.DirectionalLight(0x00d4ff, 2);
+  dirLight.position.set(5, 5, 5);
+  scene.add(dirLight);
+  const dirLight2 = new THREE.DirectionalLight(0xff6b35, 1);
+  dirLight2.position.set(-5, -3, 2);
+  scene.add(dirLight2);
+  const pointLight = new THREE.PointLight(0x7fff00, 0.8, 20);
+  pointLight.position.set(0, 5, 0);
+  scene.add(pointLight);
+
+  // Mouse drag
+  canvas.addEventListener('mousedown', e => { isDragging = true; prevMouse = {x: e.clientX, y: e.clientY}; });
+  window.addEventListener('mouseup', () => isDragging = false);
+  window.addEventListener('mousemove', e => {
+    if (!isDragging || !moleculeGroup) return;
+    const dx = e.clientX - prevMouse.x;
+    const dy = e.clientY - prevMouse.y;
+    moleculeGroup.rotation.y += dx * 0.01;
+    moleculeGroup.rotation.x += dy * 0.01;
+    prevMouse = {x: e.clientX, y: e.clientY};
+  });
+  // Touch
+  canvas.addEventListener('touchstart', e => { isDragging = true; prevMouse = {x: e.touches[0].clientX, y: e.touches[0].clientY}; });
+  canvas.addEventListener('touchend', () => isDragging = false);
+  canvas.addEventListener('touchmove', e => {
+    if (!isDragging || !moleculeGroup) return;
+    const dx = e.touches[0].clientX - prevMouse.x;
+    const dy = e.touches[0].clientY - prevMouse.y;
+    moleculeGroup.rotation.y += dx * 0.01;
+    moleculeGroup.rotation.x += dy * 0.01;
+    prevMouse = {x: e.touches[0].clientX, y: e.touches[0].clientY};
+  });
+
+  window.addEventListener('resize', () => {
+    camera.aspect = wrapper.clientWidth / wrapper.clientHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(wrapper.clientWidth, wrapper.clientHeight);
+  });
+
+  animate();
+}
+
+function animate() {
+  animFrameId = requestAnimationFrame(animate);
+  if (moleculeGroup && !isDragging) {
+    moleculeGroup.rotation.y += 0.005;
+  }
+  renderer.render(scene, camera);
+}
+
+// ===================================================
+// ATOM & BOND FACTORIES
+// ===================================================
+function makeMaterial(color, emissiveStrength = 0.3) {
+  return new THREE.MeshPhongMaterial({
+    color: new THREE.Color(color),
+    emissive: new THREE.Color(color).multiplyScalar(emissiveStrength),
+    shininess: 100,
+    specular: new THREE.Color(0xffffff)
+  });
+}
+
+function addAtom(group, x, y, z, color, radius = 0.45) {
+  const geo = new THREE.SphereGeometry(radius, 32, 32);
+  const mat = makeMaterial(color);
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(x, y, z);
+  group.add(mesh);
+  return mesh;
+}
+
+function addBond(group, p1, p2) {
+  const dir = new THREE.Vector3(p2.x - p1.x, p2.y - p1.y, p2.z - p1.z);
+  const len = dir.length();
+  const mid = new THREE.Vector3((p1.x+p2.x)/2, (p1.y+p2.y)/2, (p1.z+p2.z)/2);
+  const geo = new THREE.CylinderGeometry(0.07, 0.07, len, 12);
+  const mat = new THREE.MeshPhongMaterial({ color: 0xaaddff, emissive: 0x225566, shininess: 80 });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.copy(mid);
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), dir.normalize());
+  group.add(mesh);
+}
+
+function addLonePair(group, x, y, z) {
+  // Two small yellow spheres close together
+  const geo = new THREE.SphereGeometry(0.18, 16, 16);
+  const mat = new THREE.MeshPhongMaterial({ color: 0xffcc00, emissive: 0x664400, shininess: 80 });
+  const offset = 0.22;
+  for (let sign of [-1, 1]) {
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(x + offset * sign * 0.6, y + offset * 0.3, z);
+    group.add(m);
+  }
+  // Small torus ring around them
+  const rGeo = new THREE.TorusGeometry(0.28, 0.04, 8, 24);
+  const rMat = new THREE.MeshPhongMaterial({ color: 0xffcc00, emissive: 0x443300, transparent: true, opacity: 0.6 });
+  const ring = new THREE.Mesh(rGeo, rMat);
+  ring.position.set(x, y, z);
+  group.add(ring);
+}
+
+// ===================================================
+// MOLECULE BUILDERS
+// ===================================================
+function buildMolecule(shape) {
+  if (moleculeGroup) scene.remove(moleculeGroup);
+  moleculeGroup = new THREE.Group();
+  const C = {x:0,y:0,z:0};
+  const d = 1.6; // bond length
+
+  const shapes = {
+    linear: () => {
+      addAtom(moleculeGroup, 0, 0, 0, '#ff4444', 0.5);
+      [[-d,0,0],[d,0,0]].forEach(([x,y,z]) => {
+        addAtom(moleculeGroup, x, y, z, '#4488ff');
+        addBond(moleculeGroup, C, {x,y,z});
+      });
+    },
+    trigplanar: () => {
+      addAtom(moleculeGroup, 0, 0, 0, '#ff4444', 0.5);
+      const pts = [[d,0,0],[-d*0.5, d*0.866,0],[-d*0.5,-d*0.866,0]];
+      pts.forEach(([x,y,z]) => { addAtom(moleculeGroup, x, y, z, '#4488ff'); addBond(moleculeGroup, C, {x,y,z}); });
+    },
+    bent3: () => {
+      addAtom(moleculeGroup, 0, 0, 0, '#ff4444', 0.5);
+      const a = 119 * Math.PI / 180;
+      const pts = [[d * Math.cos(a/2), d * Math.sin(a/2), 0], [-d * Math.cos(a/2), d * Math.sin(a/2), 0]];
+      pts.forEach(([x,y,z]) => { addAtom(moleculeGroup, x, y, z, '#4488ff'); addBond(moleculeGroup, C, {x,y,z}); });
+      addLonePair(moleculeGroup, 0, -d * 0.9, 0);
+    },
+    tetrahedral: () => {
+      addAtom(moleculeGroup, 0, 0, 0, '#ff4444', 0.5);
+      const s = d * 0.816;
+      const pts = [[s,s,s],[s,-s,-s],[-s,s,-s],[-s,-s,s]].map(v => v.map(c => c * 0.82));
+      pts.forEach(([x,y,z]) => { addAtom(moleculeGroup, x, y, z, '#4488ff'); addBond(moleculeGroup, C, {x,y,z}); });
+    },
+    trigpyramidal: () => {
+      addAtom(moleculeGroup, 0, 0, 0, '#ff4444', 0.5);
+      const h = d * 0.82; const r = d * 0.82;
+      const pts = [[r,0,0], [-r*0.5,0,r*0.866], [-r*0.5,0,-r*0.866]].map(([x,y,z]) => [x*0.85, -0.6, z*0.85]);
+      pts.forEach(([x,y,z]) => { addAtom(moleculeGroup, x, y, z, '#4488ff'); addBond(moleculeGroup, C, {x,y,z}); });
+      addLonePair(moleculeGroup, 0, 1.3, 0);
+    },
+    bent4: () => {
+      addAtom(moleculeGroup, 0, 0, 0, '#ff4444', 0.5);
+      const a = 104.5 * Math.PI / 180;
+      const pts = [[d * Math.cos(a/2), -d * Math.sin(a/2) * 0.5, 0], [-d * Math.cos(a/2), -d * Math.sin(a/2) * 0.5, 0]];
+      pts.forEach(([x,y,z]) => { addAtom(moleculeGroup, x, y, z, '#4488ff'); addBond(moleculeGroup, C, {x,y,z}); });
+      addLonePair(moleculeGroup, -0.35, 1.1, 0.5);
+      addLonePair(moleculeGroup, 0.35, 1.1, -0.5);
+    },
+    trigbipyramidal: () => {
+      addAtom(moleculeGroup, 0, 0, 0, '#ff4444', 0.5);
+      // axial
+      [[0,d,0],[0,-d,0]].forEach(([x,y,z]) => { addAtom(moleculeGroup, x, y, z, '#4488ff'); addBond(moleculeGroup, C, {x,y,z}); });
+      // equatorial
+      [[d,0,0],[-d*0.5,0,d*0.866],[-d*0.5,0,-d*0.866]].forEach(([x,y,z]) => { addAtom(moleculeGroup, x, y, z, '#4488ff'); addBond(moleculeGroup, C, {x,y,z}); });
+    },
+    seesaw: () => {
+      addAtom(moleculeGroup, 0, 0, 0, '#ff4444', 0.5);
+      [[0,d,0],[0,-d,0]].forEach(([x,y,z]) => { addAtom(moleculeGroup, x, y, z, '#4488ff'); addBond(moleculeGroup, C, {x,y,z}); });
+      [[d*0.95,0,0],[-d*0.95,0,0]].forEach(([x,y,z]) => { addAtom(moleculeGroup, x, y, z, '#4488ff'); addBond(moleculeGroup, C, {x,y,z}); });
+      addLonePair(moleculeGroup, 0, 0, d * 0.9);
+    },
+    tshaped: () => {
+      addAtom(moleculeGroup, 0, 0, 0, '#ff4444', 0.5);
+      [[0,d,0],[0,-d,0],[d,0,0]].forEach(([x,y,z]) => { addAtom(moleculeGroup, x, y, z, '#4488ff'); addBond(moleculeGroup, C, {x,y,z}); });
+      addLonePair(moleculeGroup, -d*0.85, 0, 0.3);
+      addLonePair(moleculeGroup, -d*0.85, 0, -0.3);
+    },
+    linear5: () => {
+      addAtom(moleculeGroup, 0, 0, 0, '#ff4444', 0.5);
+      [[0,d,0],[0,-d,0]].forEach(([x,y,z]) => { addAtom(moleculeGroup, x, y, z, '#4488ff'); addBond(moleculeGroup, C, {x,y,z}); });
+      addLonePair(moleculeGroup, d*0.9, 0, 0);
+      addLonePair(moleculeGroup, -d*0.9, 0, 0);
+      addLonePair(moleculeGroup, 0, 0, d*0.9);
+    },
+    octahedral: () => {
+      addAtom(moleculeGroup, 0, 0, 0, '#ff4444', 0.5);
+      [[d,0,0],[-d,0,0],[0,d,0],[0,-d,0],[0,0,d],[0,0,-d]].forEach(([x,y,z]) => {
+        addAtom(moleculeGroup, x, y, z, '#4488ff'); addBond(moleculeGroup, C, {x,y,z});
+      });
+    },
+    sqpyramidal: () => {
+      addAtom(moleculeGroup, 0, 0, 0, '#ff4444', 0.5);
+      [[0,d,0],[d,0,0],[-d,0,0],[0,0,d],[0,0,-d]].forEach(([x,y,z]) => {
+        addAtom(moleculeGroup, x, y, z, '#4488ff'); addBond(moleculeGroup, C, {x,y,z});
+      });
+      addLonePair(moleculeGroup, 0, -d*0.85, 0);
+    },
+    sqplanar: () => {
+      addAtom(moleculeGroup, 0, 0, 0, '#ff4444', 0.5);
+      [[d,0,0],[-d,0,0],[0,0,d],[0,0,-d]].forEach(([x,y,z]) => {
+        addAtom(moleculeGroup, x, y, z, '#4488ff'); addBond(moleculeGroup, C, {x,y,z});
+      });
+      addLonePair(moleculeGroup, 0, d*0.85, 0);
+      addLonePair(moleculeGroup, 0, -d*0.85, 0);
+    }
+  };
+
+  if (shapes[shape]) shapes[shape]();
+  else shapes['linear']();
+
+  scene.add(moleculeGroup);
+}
+
+// ===================================================
+// SLIDE RENDERING
+// ===================================================
+function renderSlide(idx) {
+  const slide = slides[idx];
+  const navItems = document.querySelectorAll('.nav-item');
+  navItems.forEach((el, i) => el.classList.toggle('active', i === idx));
+
+  document.getElementById('slide-counter').textContent = `Slide ${idx + 1} / ${slides.length}`;
+  document.getElementById('progress').style.width = `${((idx + 1) / slides.length) * 100}%`;
+  document.getElementById('btn-prev').disabled = idx === 0;
+  document.getElementById('btn-next').disabled = idx === slides.length - 1;
+
+  const canvasWrapper = document.getElementById('canvas-wrapper');
+  const infoPanel = document.getElementById('info-panel');
+  const slideArea = document.getElementById('slide-area');
+
+  if (slide.type === 'theory') {
+    canvasWrapper.style.display = 'none';
+    document.getElementById('legend').classList.remove('visible');
+    infoPanel.innerHTML = theoryHTML();
+    infoPanel.style.display = 'block';
+    if (moleculeGroup) { scene.remove(moleculeGroup); moleculeGroup = null; }
+  } else if (slide.type === 'summary') {
+    canvasWrapper.style.display = 'none';
+    document.getElementById('legend').classList.remove('visible');
+    infoPanel.innerHTML = summaryHTML();
+    infoPanel.style.display = 'block';
+    if (moleculeGroup) { scene.remove(moleculeGroup); moleculeGroup = null; }
+  } else {
+    canvasWrapper.style.display = 'block';
+    document.getElementById('legend').classList.add('visible');
+    infoPanel.style.display = 'block';
+    document.getElementById('canvas-label').textContent = slide.name;
+    document.getElementById('canvas-formula').textContent = slide.formula;
+    buildMolecule(slide.shape);
+    infoPanel.innerHTML = shapeHTML(slide);
+  }
+}
+
+function theoryHTML() {
+  return `
+  <div class="theory-slide">
+    <h1>What is VSEPR Theory?</h1>
+    <div class="notation-box">AXₙEₘ — where A = central atom, X = bonded atom, E = lone pair</div>
+    <div class="theory-grid">
+      <div class="theory-card">
+        <div class="icon">🔬</div>
+        <h3>The Core Idea</h3>
+        <p>Valence Shell Electron Pair Repulsion theory predicts the 3D shape of molecules based on repulsion between electron pairs around the central atom.</p>
+      </div>
+      <div class="theory-card">
+        <div class="icon">⚡</div>
+        <h3>Repulsion Order</h3>
+        <p><strong style="color:#ffcc00">LP–LP > LP–BP > BP–BP</strong><br>Lone pairs repel more strongly than bonding pairs, distorting bond angles.</p>
+      </div>
+      <div class="theory-card">
+        <div class="icon">📐</div>
+        <h3>Electron Domains</h3>
+        <p>Count all electron domains (bonds + lone pairs) around the central atom to determine the electron geometry first.</p>
+      </div>
+      <div class="theory-card">
+        <div class="icon">🎯</div>
+        <h3>Molecular Shape</h3>
+        <p>Molecular geometry considers only the atoms — lone pairs are invisible in the final shape name, but they affect bond angles!</p>
+      </div>
+    </div>
+    <table class="vsepr-table">
+      <tr><th>Total ED</th><th>Bonded</th><th>Lone Pairs</th><th>Shape</th><th>Bond Angle</th><th>Example</th></tr>
+      <tr><td>2</td><td>2</td><td>0</td><td>Linear</td><td>180°</td><td>CO₂</td></tr>
+      <tr><td>3</td><td>3</td><td>0</td><td>Trigonal Planar</td><td>120°</td><td>BF₃</td></tr>
+      <tr><td>3</td><td>2</td><td>1</td><td>Bent</td><td>~119°</td><td>SO₂</td></tr>
+      <tr><td>4</td><td>4</td><td>0</td><td>Tetrahedral</td><td>109.5°</td><td>CH₄</td></tr>
+      <tr><td>4</td><td>3</td><td>1</td><td>Trigonal Pyramidal</td><td>~107°</td><td>NH₃</td></tr>
+      <tr><td>4</td><td>2</td><td>2</td><td>Bent</td><td>~104.5°</td><td>H₂O</td></tr>
+      <tr><td>5</td><td>5</td><td>0</td><td>Trigonal Bipyramidal</td><td>90°/120°</td><td>PCl₅</td></tr>
+      <tr><td>5</td><td>4</td><td>1</td><td>Seesaw</td><td>~173°/~101°</td><td>SF₄</td></tr>
+      <tr><td>5</td><td>3</td><td>2</td><td>T-Shaped</td><td>~87.5°</td><td>ClF₃</td></tr>
+      <tr><td>5</td><td>2</td><td>3</td><td>Linear</td><td>180°</td><td>XeF₂</td></tr>
+      <tr><td>6</td><td>6</td><td>0</td><td>Octahedral</td><td>90°</td><td>SF₆</td></tr>
+      <tr><td>6</td><td>5</td><td>1</td><td>Square Pyramidal</td><td>~84.8°</td><td>BrF₅</td></tr>
+      <tr><td>6</td><td>4</td><td>2</td><td>Square Planar</td><td>90°</td><td>XeF₄</td></tr>
+    </table>
+  </div>`;
+}
+
+function shapeHTML(slide) {
+  const lpDots = '🟡'.repeat(slide.lone);
+  const bpDots = '🔵'.repeat(slide.bonded);
+  return `
+  <div class="info-grid">
+    <div class="info-card">
+      <h3>Notation</h3>
+      <p>${slide.notation}</p>
+      <p class="sub">${slide.bonded} bonded + ${slide.lone} lone pair${slide.lone !== 1 ? 's' : ''}</p>
+    </div>
+    <div class="info-card">
+      <h3>Bond Angle</h3>
+      <p><span class="angle-badge">${slide.angle}</span></p>
+      <p class="sub">Electron domains: ${slide.totalED}</p>
+    </div>
+    <div class="info-card">
+      <h3>Electron Domains</h3>
+      <p style="font-size:0.85rem">${bpDots} ${lpDots.length ? '| ' + lpDots : ''}</p>
+      <p class="sub">Blue = bonds, Yellow = lone pairs</p>
+    </div>
+  </div>
+  <div class="description-box">${slide.description}</div>
+  <div style="margin-bottom:0.8rem">
+    <div style="font-size:0.75rem;color:#4a8fa8;letter-spacing:2px;margin-bottom:0.5rem;font-family:'Orbitron',sans-serif;">EXAMPLES</div>
+    <div class="examples-row">${slide.examples.map(e => `<span class="example-tag">${e}</span>`).join('')}</div>
+  </div>
+  <div class="rule-box">💡 <strong>Key Rule:</strong> ${slide.rule}</div>`;
+}
+
+function summaryHTML() {
+  const shapes = slides.filter(s => !s.type);
+  return `
+  <div class="theory-slide">
+    <h1 style="color:#7fff00">🎉 All VSEPR Shapes Mastered!</h1>
+    <p style="color:#5a8fa8;margin-bottom:1.5rem;font-size:0.9rem;">You've explored all major molecular geometries predicted by VSEPR Theory.</p>
+    <div class="shapes-summary">
+      ${shapes.map(s => `<div class="shape-chip">${s.name}<br><span style="color:#4a8fa8;font-size:0.65rem">${s.angle}</span></div>`).join('')}
+    </div>
+    <div class="description-box" style="margin-top:1.5rem">
+      <strong style="color:var(--accent)">Remember the golden rules:</strong><br>
+      1. Count ALL electron domains (bonds + lone pairs)<br>
+      2. Lone pairs repel MORE than bonding pairs<br>
+      3. More lone pairs = smaller bond angles<br>
+      4. Lone pairs are "invisible" in the molecular shape name<br>
+      5. Equatorial positions are preferred by lone pairs (in 5 ED molecules)
+    </div>
+  </div>`;
+}
+
+function goTo(idx) {
+  currentSlide = idx;
+  renderSlide(currentSlide);
+}
+
+function nextSlide() {
+  if (currentSlide < slides.length - 1) { currentSlide++; renderSlide(currentSlide); }
+}
+
+function prevSlide() {
+  if (currentSlide > 0) { currentSlide--; renderSlide(currentSlide); }
+}
+
+// Keyboard navigation
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') nextSlide();
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') prevSlide();
+});
+
+// Init particles
+createParticles();
+</script>
+</body>
+</html>
